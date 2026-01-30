@@ -1,1 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stroop Test (5‑Color)</title>
+  <style>
+    :root{
+      --bg:#0f1320;
+      --card:#151a2c;
+      --ink:#eaeefb;
+      --muted:#9aa3b2;
+      --accent:#4cc9f0;
+      --ok:#2dd4bf;
+      --warn:#f59e0b;
+      --err:#ef4444;
+      --btn:#1e243a;
+      --btn-hover:#263052;
+      --btn-border:#2c3556;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+      background: radial-gradient(1200px 800px at 20% 0%, #142042 0%, #0f1320 60%), var(--bg);
+      color:var(--ink); display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{
+      width:min(860px, 100%); background:var(--card); border:1px solid #1f2743; border-radius:16px;
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+    header, footer{padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px}
+    header{border-bottom:1px solid #20294b}
+    footer{border-top:1px solid #20294b; font-size:13px; color:var(--muted)}
+    .title{font-weight:700; letter-spacing:.2px}
+    .screen{padding:28px 24px}
+    .center{display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .card{
+      background:#0f1530; border:1px solid #20294b; border-radius:12px; padding:18px; width:100%;
+    }
+    .muted{color:var(--muted)}
+    .toggle{
+      display:flex; align-items:center; gap:10px; background:#0e1430; border:1px solid #20294b;
+      padding:10px 12px; border-radius:10px; cursor:pointer; user-select:none;
+    }
+    .toggle input{accent-color:var(--accent); width:18px; height:18px}
+    .btn{
+      background:var(--btn); border:1px solid var(--btn-border); color:var(--ink); padding:12px 16px;
+      border-radius:10px; cursor:pointer; transition:.15s background,.15s transform,.15s border-color;
+      font-weight:600; letter-spacing:.2px; min-width:120px; text-transform:uppercase;
+    }
+    .btn:hover{background:var(--btn-hover)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:linear-gradient(180deg, #4cc9f0, #3b82f6); border-color:#3b82f6; color:#0a1025}
+    .btn.ghost{background:transparent; border-color:#2b3358; color:var(--muted)}
+    .grid{display:grid; grid-template-columns:repeat(5, minmax(120px,1fr)); gap:12px; width:100%}
+    .stroke{
+      font-size:58px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+      text-align:center; margin:8px 0 4px;
+    }
+    .hud{display:flex; gap:16px; justify-content:center; margin:6px 0 12px; color:var(--muted); font-size:14px}
+    .pill{padding:6px 10px; border:1px solid #222c53; border-radius:999px; background:#101638}
+    .countdown{
+      position:relative; height:12px; width:100%; background:#0e1330; border:1px solid #20294b; border-radius:999px; overflow:hidden;
+    }
+    .countdown > .bar{
+      position:absolute; left:0; top:0; bottom:0; width:100%; background:linear-gradient(90deg, #22d3ee, #22c55e);
+      transform-origin:left center;
+    }
+    .note{font-size:12px; color:var(--muted)}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight:700; font-size:12px;
+         padding:2px 6px; border:1px solid #24305a; border-radius:6px; background:#0c1230; color:#c7d2fe}
+    .result h2{margin:8px 0 4px}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="title">Stroop Test • 5‑Color</div>
+      <div id="status" class="muted"></div>
+    </header>
 
+    <!-- START SCREEN -->
+    <section id="start" class="screen">
+      <div class="center" style="gap:18px">
+        <div class="card">
+          <h2 style="margin:0 0 8px">Configure</h2>
+          <div class="row">
+            <label class="toggle">
+              <input id="fillToggle" type="checkbox" checked />
+              <span><strong>Color fill</strong> on answer buttons</span>
+            </label>
+            <label class="toggle">
+              <input id="shuffleToggle" type="checkbox" checked />
+              <span><strong>Shuffle</strong> answer button order each trial</span>
+            </label>
+          </div>
+          <p class="note" style="margin-top:10px">
+            Task: select the <strong>INK COLOR</strong> of the word, not the written word.<br/>
+            Keyboard: keys <span class="kbd">1</span>–<span class="kbd">5</span> map left→right.
+          </p>
+        </div>
+        <button class="btn primary" id="startBtn">Start</button>
+      </div>
+    </section>
+
+    <!-- TASK SCREEN -->
+    <section id="task" class="screen hidden">
+      <div class="center" style="gap:10px">
+        <div class="hud">
+          <div class="pill">Consecutive correct: <span id="streak">0</span> / 200</div>
+          <div class="pill">Round: <span id="round">1</span></div>
+          <div class="pill">Max time: <span id="maxt">10.0s</span></div>
+        </div>
+        <div class="stroke" id="stimulus" aria-live="polite">GREEN</div>
+        <div class="countdown" aria-hidden="true" title="time remaining">
+          <div class="bar" id="bar"></div>
+        </div>
+        <div class="grid" id="answers" aria-label="answer choices"></div>
+        <div class="note">Choose the ink color. A wrong answer or timeout ends the test.</div>
+      </div>
+    </section>
+
+    <!-- ROUND PAUSE / INTERSTITIAL -->
+    <section id="pause" class="screen hidden">
+      <div class="center">
+        <div class="card" style="max-width:620px">
+          <h2 style="margin-top:0">Round complete</h2>
+          <p id="pauseMsg" class="muted" style="margin:6px 0 0"></p>
+        </div>
+        <button class="btn primary" id="continueBtn">Continue</button>
+      </div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section id="result" class="screen hidden">
+      <div class="center result">
+        <h2 id="resultTitle" class="ok">Well done!</h2>
+        <p id="resultSubtitle" class="muted"></p>
+        <div class="card" style="max-width:620px">
+          <div class="row" style="justify-content:center; gap:18px">
+            <div class="pill">Consecutive correct: <span id="finalCorrect">0</span></div>
+            <div class="pill">Rounds completed: <span id="finalRounds">0</span></div>
+            <div class="pill">Average RT (correct): <span id="finalAvg">0.000s</span></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="restartBtn">Restart</button>
+          <button class="btn ghost" id="keepConfigBtn">Restart & keep toggles</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>Stroop stimulus set: <span class="kbd">RED</span>, <span class="kbd">BLUE</span>, <span class="kbd">GREEN</span>, <span class="kbd">YELLOW</span>, <span class="kbd">PURPLE</span></div>
+      <div>© You</div>
+    </footer>
+  </div>
+
+  <script>
+    // --- Constants and color set ---
+    const COLORS = [
+      { name: 'RED',    hex: '#e53935' },
+      { name: 'BLUE',   hex: '#1e88e5' },
+      { name: 'GREEN',  hex: '#43a047' },
+      { name: 'YELLOW', hex: '#fdd835' },
+      { name: 'PURPLE', hex: '#8e24aa' }
+    ];
+    const MAX_STREAK = 200;
+    const START_MAX_TIME = 10; // seconds
+    const MIN_MAX_TIME = 1;    // seconds (floor to keep playable)
+
+    // --- Elements ---
+    const el = (id)=>document.getElementById(id);
+    const startScreen = el('start');
+    const taskScreen  = el('task');
+    const pauseScreen = el('pause');
+    const resultScreen= el('result');
+
+    const status   = el('status');
+    const stim     = el('stimulus');
+    const answers  = el('answers');
+    const bar      = el('bar');
+
+    const streakEl = el('streak');
+    const roundEl  = el('round');
+    const maxtEl   = el('maxt');
+
+    const pauseMsg = el('pauseMsg');
+
+    const resultTitle = el('resultTitle');
+    const resultSubtitle = el('resultSubtitle');
+    const finalCorrect = el('finalCorrect');
+    const finalRounds  = el('finalRounds');
+    const finalAvg     = el('finalAvg');
+
+    // --- Options / State ---
+    const state = {
+      fillButtons: true,
+      shuffleButtons: true,
+      maxTimeSec: START_MAX_TIME,
+      streak: 0,
+      rtSumMs: 0,
+      rtCount: 0,
+      round: 1,         // 1-based; reduces max time after each completed block of 10
+      trialStartMs: 0,
+      deadlineHandle: null,
+      currentInkIndex: 0,   // correct answer (by COLOR index)
+      visibleOrder: [...COLORS.keys()] // order of answer buttons
+    };
+
+    // --- Utilities ---
+    function show(id){ for (const s of [startScreen, taskScreen, pauseScreen, resultScreen]) s.classList.add('hidden'); el(id).classList.remove('hidden'); }
+    function shuffle(arr){ const a=[...arr]; for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function clamp(n, lo, hi){ return Math.min(hi, Math.max(lo, n)); }
+    function fmtSec(x){ return (Math.round(x*10)/10).toFixed(1) + 's'; }
+    function setStatus(msg){ status.textContent = msg; }
+
+    // --- UI builders ---
+    function buildAnswerButtons(){
+      answers.innerHTML = '';
+      const order = state.shuffleButtons ? shuffle([...COLORS.keys()]) : [...COLORS.keys()];
+      state.visibleOrder = order;
+      order.forEach((idx, i) => {
+        const c = COLORS[idx];
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.setAttribute('data-color-idx', idx);
+        btn.setAttribute('aria-label', c.name + ' answer');
+        btn.textContent = c.name;
+        if (state.fillButtons){
+          btn.style.background = c.hex;
+          btn.style.color = '#0a0f25';
+          btn.style.borderColor = '#0a0f25';
+        }
+        btn.addEventListener('click', () => onAnswer(idx));
+        answers.appendChild(btn);
+      });
+    }
+
+    function nextTrial(){
+      // clear previous timers
+      if (state.deadlineHandle) { clearTimeout(state.deadlineHandle); state.deadlineHandle = null; }
+      bar.style.transform = 'scaleX(1)'; // reset
+      // set stimulus (word text and ink color)
+      const wordIdx = Math.floor(Math.random()*COLORS.length);
+      let inkIdx = Math.floor(Math.random()*COLORS.length);
+      // 50/50 congruent vs incongruent; if incongruent, ensure not equal
+      if (Math.random() < 0.5){
+        while (inkIdx === wordIdx) inkIdx = Math.floor(Math.random()*COLORS.length);
+      }
+      state.currentInkIndex = inkIdx;
+
+      const ink = COLORS[inkIdx];
+      const word = COLORS[wordIdx];
+
+      stim.textContent = word.name;
+      stim.style.color = ink.hex;
+
+      // build answers respecting toggles
+      buildAnswerButtons();
+      // start timing
+      state.trialStartMs = performance.now();
+      const max = state.maxTimeSec;
+      const animMs = max * 1000;
+      // animate countdown bar
+      bar.animate([{ transform:'scaleX(1)' }, { transform:'scaleX(0)' }], { duration: animMs, easing:'linear' });
+      // schedule deadline
+      state.deadlineHandle = setTimeout(() => end('timeout'), animMs);
+      setHUD();
+    }
+
+    function setHUD(){
+      streakEl.textContent = state.streak;
+      roundEl.textContent  = state.round;
+      maxtEl.textContent   = fmtSec(state.maxTimeSec);
+    }
+
+    // --- Flow controls ---
+    function start(){
+      state.fillButtons = el('fillToggle').checked;
+      state.shuffleButtons = el('shuffleToggle').checked;
+      resetProgress(true);
+      show('task');
+      setStatus('Running… Select the ink color.');
+      nextTrial();
+      // keyboard support 1–5
+      window.onkeydown = (e)=>{
+        if (document.activeElement && ['INPUT','BUTTON'].includes(document.activeElement.tagName)) return;
+        if (/^[1-5]$/.test(e.key)){
+          const pos = parseInt(e.key,10)-1;
+          const colorIdx = state.visibleOrder[pos];
+          if (colorIdx !== undefined) onAnswer(colorIdx);
+        }
+      };
+    }
+
+    function resetProgress(keepOptions=false){
+      state.maxTimeSec = START_MAX_TIME;
+      state.streak = 0; state.rtSumMs = 0; state.rtCount = 0;
+      state.round = 1;
+      setHUD();
+      if (!keepOptions){
+        el('fillToggle').checked = true;
+        el('shuffleToggle').checked = true;
+        state.fillButtons = true; state.shuffleButtons = true;
+      }
+    }
+
+    function onAnswer(chosenIdx){
+      if (state.deadlineHandle) { clearTimeout(state.deadlineHandle); state.deadlineHandle = null; }
+      const rt = performance.now() - state.trialStartMs;
+      const correct = (chosenIdx === state.currentInkIndex);
+
+      if (!correct){
+        end('mistake', rt);
+        return;
+      }
+      // correct
+      state.streak += 1;
+      state.rtSumMs += rt;
+      state.rtCount += 1;
+
+      if (state.streak >= MAX_STREAK){
+        end('completed', rt);
+        return;
+      }
+      // Round transition after every 10 consecutive correct
+      if (state.streak % 10 === 0){
+        const completedBlocks = Math.floor(state.streak / 10);
+        const newMax = clamp(START_MAX_TIME - completedBlocks, MIN_MAX_TIME, START_MAX_TIME);
+        const reduced = newMax < state.maxTimeSec; // whether it actually reduces (once it hits MIN_MAX_TIME it won’t go lower)
+        state.maxTimeSec = newMax;
+        state.round = completedBlocks + 1;
+        show('pause');
+        pauseMsg.innerHTML = reduced
+          ? `Great job — <strong>${state.streak}</strong> correct in a row.<br/>
+             For the next block, the maximum response time reduces by <strong>1 second</strong> to <strong>${fmtSec(state.maxTimeSec)}</strong>.`
+          : `Great job — <strong>${state.streak}</strong> correct in a row.<br/>
+             You’ve reached the minimum maximum response time of <strong>${fmtSec(state.maxTimeSec)}</strong>.`;
+        setStatus('Paused between rounds.');
+      } else {
+        nextTrial();
+      }
+    }
+
+    function end(reason, lastRtMs=0){
+      if (state.deadlineHandle) { clearTimeout(state.deadlineHandle); state.deadlineHandle = null; }
+      show('result');
+      const avg = state.rtCount ? (state.rtSumMs / state.rtCount / 1000) : 0;
+      finalCorrect.textContent = state.streak;
+      finalRounds.textContent  = Math.floor(state.streak / 10);
+      finalAvg.textContent     = avg.toFixed(3) + 's';
+
+      if (reason === 'completed'){
+        resultTitle.textContent = 'Maximum streak reached!';
+        resultTitle.className = 'ok';
+        resultSubtitle.textContent = 'You hit 200 correct in a row — session complete.';
+        setStatus('Finished (hard stop reached).');
+      } else if (reason === 'timeout'){
+        resultTitle.textContent = 'Time up';
+        resultTitle.className = 'warn';
+        resultSubtitle.textContent = `The trial timed out at ${fmtSec(state.maxTimeSec)}.`;
+        setStatus('Finished (timeout).');
+      } else { // mistake
+        resultTitle.textContent = 'Incorrect response';
+        resultTitle.className = 'err';
+        resultSubtitle.textContent = 'Session ended on an incorrect answer.';
+        setStatus('Finished (mistake).');
+      }
+    }
+
+    // --- Event wiring ---
+    el('startBtn').addEventListener('click', start);
+    el('continueBtn').addEventListener('click', ()=>{
+      show('task');
+      setStatus('Running… Select the ink color.');
+      nextTrial();
+    });
+    el('restartBtn').addEventListener('click', ()=>{
+      show('start');
+      setStatus('Ready.');
+      resetProgress(false);
+    });
+    el('keepConfigBtn').addEventListener('click', ()=>{
+      show('task');
+      setStatus('Running… Select the ink color.');
+      resetProgress(true);
+      nextTrial();
+    });
+
+    // Initial
+    setStatus('Ready.');
+  </script>
+</body>
+</html>
