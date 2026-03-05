@@ -8,6 +8,7 @@
 </head>
 <body>
   <script type="module">
+    
     /**
      * Entire widget UI is created via JavaScript:
      * - Creates launcher button + widget panel + header + close + webchat host
@@ -19,6 +20,11 @@
      * Microsoft documents integration methods for Copilot Studio agents including web embedding approaches. [2](https://sharepoint247.com/branding/how-to-customize-the-look-feel-of-the-copilot-studio-chatbot-for-use-on-external-websites/)
      */
 
+    import {
+        CopilotStudioClient,
+        CopilotStudioWebChat
+    } from "https://esm.run/@microsoft/agents-copilotstudio-client";
+    
     // ---------- 1) Inject CSS ----------
     const style = document.createElement("style");
     style.textContent = `
@@ -197,11 +203,6 @@
       await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
 
       // Import Copilot Studio client + WebChat bridge
-      
-    import {
-        CopilotStudioClient,
-        CopilotStudioWebChat
-      } from "https://esm.run/@microsoft/agents-copilotstudio-client";
 
       // TODO: Replace with your agent identifiers
       const client = new CopilotStudioClient({
