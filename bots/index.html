@@ -152,8 +152,7 @@
 
       // MSAL for JWT token (interactive user sign-in)
       
-      import * as msal from
-        "https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm";
+      const msal = await import("https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm");
       
       const msalConfig = {
         auth: {
