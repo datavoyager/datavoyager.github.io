@@ -27,7 +27,7 @@
     const AGENTS_SDK_ESM = "https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client@latest/+esm";
 
     // UI Options
-    const LOCALE = "en-US";
+    const LOCALE = "en-GB";
     const WIDGET_TITLE = "Copilot";
     const START_OPEN = true;
 
@@ -106,7 +106,7 @@
       // Load external JS via injection
       
         // Instead of window.msal:
-        const msal = await import("./assets/msal-browser.min.js"); // or CDN +esm if allowed
+        const msal = await import("./msal-browser.min.js"); // or CDN +esm if allowed
         
         const msalApp = new msal.PublicClientApplication({
           auth: {
