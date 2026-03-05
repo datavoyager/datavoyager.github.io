@@ -131,16 +131,6 @@
       // Compute the required scope/audience from settings [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
       const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); 
 
-      // MSAL sign-in + token acquisition
-      const msalApp = new window.msal.PublicClientApplication({
-        auth: {
-          clientId: CLIENT_ID,
-          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-          redirectUri: window.location.href
-        },
-        cache: { cacheLocation: "sessionStorage" }
-      });
-
       let account = msalApp.getAllAccounts()[0];
       if (!account) {
         await msalApp.loginPopup({ scopes: [scope] });
