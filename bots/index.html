@@ -175,8 +175,40 @@
         useExperimentalEndpoint: USE_EXPERIMENTAL_ENDPOINT
       };
 
-      // Compute the correct scope/audience for the token using the client helper [5](https://github.com/microsoft/agents)
-      const scope = CopilotStudioClient.scopeFromSettings(settings);
+      // Copilot Studio client SDK (ESM import)
+      const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
+      const {
+        CopilotStudioClient,
+        CopilotStudioWebChat,
+        getTokenAudience,
+        PowerPlatformCloud
+      } = sdk;
+      
+      function extractDirectConnectUrl(maybeConnectionString) {
+        if (!maybeConnectionString) return "";
+        if (/^https?:\/\//i.test(maybeConnectionString.trim())) return maybeConnectionString.trim();
+        const parts = maybeConnectionString.split(";").map(s => s.trim()).filter(Boolean);
+        for (const p of parts) {
+          const [k, ...rest] = p.split("=");
+          if (!k || rest.length === 0) continue;
+          const key = k.trim().toLowerCase();
+          const val = rest.join("=").trim();
+          if (key === "directconnecturl" || key === "direct_connect_url") return val;
+        }
+        return maybeConnectionString.trim();
+      }
+      
+      const directUrl = extractDirectConnectUrl(DIRECT_CONNECT_URL);
+      
+      // Connection settings used to connect to the agent
+      const settings = {
+        directConnectUrl: directUrl,
+        useExperimentalEndpoint: true
+      };
+      
+      // ✅ Compute the MSAL scope/audience explicitly using getTokenAudience
+      // so the SDK doesn't need to infer the cloud from the URL.
+      const scope = getTokenAudience(undefined, PowerPlatformCloud.Prod, "", directUrl);
 
       // Sign in + get token for Copilot Studio/Power Platform audience
       let account = msalInstance.getAllAccounts()?.[0];
