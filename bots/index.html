@@ -151,7 +151,20 @@
       await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
 
       // MSAL for JWT token (interactive user sign-in)
-      await loadScript("https://cdn.jsdelivr.net/npm/@azure/msal-browser@latest/dist/msal-browser.min.js");
+      
+      import * as msal from
+        "https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm";
+      
+      const msalConfig = {
+        auth: {
+          clientId: CLIENT_ID,
+          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+          redirectUri: window.location.origin
+        }
+      };
+      
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+
 
       // Copilot Studio client SDK (ESM import)
       const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
@@ -165,16 +178,6 @@
 
       // Compute the correct scope/audience for the token using the client helper [5](https://github.com/microsoft/agents)
       const scope = CopilotStudioClient.scopeFromSettings(settings);
-
-      // MSAL setup (browser public client)
-      const msalConfig = {
-        auth: {
-          clientId: CLIENT_ID,
-          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-          redirectUri: window.location.origin
-        }
-      };
-      const msalInstance = new window.msal.PublicClientApplication(msalConfig);
 
       // Sign in + get token for Copilot Studio/Power Platform audience
       let account = msalInstance.getAllAccounts()?.[0];
