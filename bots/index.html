@@ -104,7 +104,19 @@
 
     async function startCopilot() {
       // Load external JS via injection
-      await loadScript(MSAL_JS);
+      
+        // Instead of window.msal:
+        const msal = await import("./assets/msal-browser.min.js"); // or CDN +esm if allowed
+        
+        const msalApp = new msal.PublicClientApplication({
+          auth: {
+            clientId: CLIENT_ID,
+            authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+            redirectUri: window.location.href
+          },
+          cache: { cacheLocation: "sessionStorage" }
+        });
+
       await loadScript(WEBCHAT_JS);
 
       if (!window.msal) throw new Error("MSAL failed to load.");
