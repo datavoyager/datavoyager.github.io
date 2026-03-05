@@ -115,10 +115,9 @@
 
       // Build ConnectionSettings using directConnectUrl
       // directConnectUrl causes other settings to be ignored. [3](https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-integrate-web-or-native-app-m365-agents-sdk)[4](https://community.powerplatform.com/forums/thread/details/?threadid=4d0f9b82-80cf-ef11-b8e8-6045bdd9204f)
-      const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); [8](https://argonsys.com/microsoft-cloud/library/generate-azure-jwt-token-in-copilot-studio/)[3](https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-integrate-web-or-native-app-m365-agents-sdk)
-
+      const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); 
       // Compute the required scope/audience from settings [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
-      const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
+      const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); 
 
       // MSAL sign-in + token acquisition
       const msalApp = new window.msal.PublicClientApplication({
@@ -146,11 +145,10 @@
       const jwt = tokenResult.accessToken;
 
       // Create CopilotStudioClient(settings, token) [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
-      const client = new Agents.CopilotStudioClient(settings, jwt); [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
+      const client = new Agents.CopilotStudioClient(settings, jwt); 
 
       // Create WebChat-compatible connection [7](https://rajeevpentyala.com/2025/11/10/copilot-studio-configure-end-user-authentication/)
-      const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true }); [7](https://rajeevpentyala.com/2025/11/10/copilot-studio-configure-end-user-authentication/)
-
+      const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true }); 
       // Render WebChat into injected container (no iframe)
       window.WebChat.renderWebChat(
         {
