@@ -4,221 +4,201 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Floating Copilot Widget (All UI created in JS)</title>
+  <title>Copilot Studio Floating Widget (directConnectUrl)</title>
 </head>
 <body>
-  
-<script type="module">
-  import { CopilotStudioClient, CopilotStudioWebChat }
-    from "https://esm.run/@microsoft/agents-copilotstudio-client";
-</script>
-
   <script type="module">
-    
     /**
-     * Entire widget UI is created via JavaScript:
-     * - Creates launcher button + widget panel + header + close + webchat host
-     * - Injects CSS
-     * - Loads BotFramework WebChat dynamically
-     * - Imports Copilot Studio JS client + creates DirectLine-compatible connection and renders chat
+     * Uses:
+     * - BotFramework WebChat (UI)
+     * - @microsoft/agents-copilotstudio-client (CopilotStudioClient + CopilotStudioWebChat)
+     * - MSAL Browser for interactive sign-in (JWT token is required by the client) [1](https://microsoft.github.io/Agents-for-js/modules/_microsoft_agents-copilotstudio-client.html)[2](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/?view=agents-sdk-js-latest)
      *
-     * CopilotStudioWebChat provides a DirectLine-compatible connection for WebChat. [1](https://swanseauniversity.sharepoint.com/sites/DigitalArchitecture/Shared%20Documents/COAH%20Test/w_gb_b25.txt?web=1)
-     * Microsoft documents integration methods for Copilot Studio agents including web embedding approaches. [2](https://sharepoint247.com/branding/how-to-customize-the-look-feel-of-the-copilot-studio-chatbot-for-use-on-external-websites/)
+     * Connection requirement:
+     * Provide either directConnectUrl OR both environmentId and schemaName/agentIdentifier.
+     * This page uses directConnectUrl. [3](https://github.com/Azure-Samples/azure-openai-chat-frontend)[4](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)
      */
 
-    import {
-        CopilotStudioClient,
-        CopilotStudioWebChat
-    } from "https://esm.run/@microsoft/agents-copilotstudio-client";
-    
-    // ---------- 1) Inject CSS ----------
-    const style = document.createElement("style");
-    style.textContent = `
-      :root {
-        --widget-width: 360px;
-        --widget-height: 540px;
-        --brand: #4f46e5;
-        --brand2: #2563eb;
-        --bg: #ffffff;
-        --text: #0f172a;
-        --muted: rgba(255,255,255,.18);
-        --border: rgba(15, 23, 42, 0.14);
-        --shadow: 0 14px 40px rgba(2, 6, 23, 0.25);
-        --radius: 14px;
-        --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      }
+    // ---------------------------
+    // 0) CONFIG (replace these)
+    // ---------------------------
+    const DIRECT_CONNECT_URL = "PASTE_YOUR_DIRECT_CONNECT_URL_HERE";
+    const TENANT_ID = "PASTE_YOUR_TENANT_ID_HERE";
+    const CLIENT_ID = "PASTE_YOUR_ENTRA_APP_CLIENT_ID_HERE";
 
-      #copilot-launcher {
-        position: fixed;
-        right: 18px;
-        bottom: 18px;
-        z-index: 9999;
-        width: 56px;
-        height: 56px;
-        border-radius: 999px;
-        border: 0;
-        background: var(--brand);
-        color: #fff;
-        cursor: pointer;
-        box-shadow: var(--shadow);
-        display: grid;
-        place-items: center;
-        font: 700 14px/1 var(--font);
-        letter-spacing: .2px;
-        user-select: none;
-      }
+    // Optional
+    const USE_EXPERIMENTAL_ENDPOINT = true; // supported setting on connection settings [3](https://github.com/Azure-Samples/azure-openai-chat-frontend)[4](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)
 
-      #copilot-launcher:focus {
-        outline: 3px solid rgba(79, 70, 229, .35);
-        outline-offset: 2px;
-      }
-
-      #copilot-widget {
-        position: fixed;
-        right: 18px;
-        bottom: 86px;
-        z-index: 9999;
-        width: var(--widget-width);
-        height: var(--widget-height);
-        background: var(--bg);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        overflow: hidden;
-        display: none; /* toggled by JS */
-      }
-
-      #copilot-header {
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 10px 0 14px;
-        background: linear-gradient(90deg, var(--brand), var(--brand2));
-        color: #fff;
-        font: 700 14px/1 var(--font);
-      }
-
-      #copilot-title-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      #copilot-subtitle {
-        font: 500 12px/1 var(--font);
-        opacity: .9;
-        margin-top: 2px;
-      }
-
-      #copilot-close {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        border: 0;
-        background: var(--muted);
-        color: #fff;
-        cursor: pointer;
-        font-size: 20px;
-        line-height: 34px;
-        display: grid;
-        place-items: center;
-      }
-
-      #copilot-close:focus {
-        outline: 3px solid rgba(255,255,255,.35);
-        outline-offset: 2px;
-      }
-
-      #webchat {
-        width: 100%;
-        height: calc(var(--widget-height) - 48px);
-      }
-
-      @media (max-width: 420px) {
-        #copilot-widget { left: 10px; right: 10px; width: auto; }
-        #copilot-launcher { right: 10px; bottom: 10px; }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // ---------- 2) Build UI via DOM ----------
-    function el(tag, attrs = {}, children = []) {
-      const node = document.createElement(tag);
-      for (const [k, v] of Object.entries(attrs)) {
-        if (k === "className") node.className = v;
-        else if (k === "text") node.textContent = v;
-        else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
-        else node.setAttribute(k, v);
-      }
-      for (const child of children) node.appendChild(child);
-      return node;
-    }
-
-    const launcher = el("button", {
-      id: "copilot-launcher",
-      "aria-label": "Open chat",
-      "aria-expanded": "false",
-      text: "Chat"
-    });
-
-    const closeBtn = el("button", {
-      id: "copilot-close",
-      "aria-label": "Close chat",
-      title: "Close",
-      text: "×"
-    });
-
-    const titleWrap = el("div", { id: "copilot-title-wrap" }, [
-      el("div", { text: "Ask Copilot" }),
-      el("div", { id: "copilot-subtitle", text: "How can I help?" })
-    ]);
-
-    const header = el("header", { id: "copilot-header" }, [titleWrap, closeBtn]);
-    const webchatHost = el("div", { id: "webchat" });
-
-    const widget = el("section", {
-      id: "copilot-widget",
-      role: "dialog",
-      "aria-label": "Copilot chat widget"
-    }, [header, webchatHost]);
-
-    document.body.appendChild(launcher);
-    document.body.appendChild(widget);
-
-    // ---------- 3) Load WebChat script dynamically ----------
+    // ---------------------------
+    // 1) Helpers: load external scripts
+    // ---------------------------
     function loadScript(src) {
       return new Promise((resolve, reject) => {
         const s = document.createElement("script");
         s.src = src;
         s.async = true;
         s.onload = resolve;
-        s.onerror = () => reject(new Error("Failed to load script: " + src));
+        s.onerror = () => reject(new Error("Failed to load: " + src));
         document.head.appendChild(s);
       });
     }
 
-    // ---------- 4) Render chat on first open (once) ----------
+    function injectCss(cssText) {
+      const style = document.createElement("style");
+      style.textContent = cssText;
+      document.head.appendChild(style);
+    }
+
+    function el(tag, attrs = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "text") node.textContent = v;
+        else if (k === "className") node.className = v;
+        else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
+        else node.setAttribute(k, v);
+      }
+      children.forEach(c => node.appendChild(c));
+      return node;
+    }
+
+    // ---------------------------
+    // 2) UI: Create floating widget (HTML created via JS)
+    // ---------------------------
+    injectCss(`
+      :root{
+        --w:360px; --h:540px; --r:14px;
+        --brand:#4f46e5; --brand2:#2563eb;
+        --bg:#fff; --text:#0f172a;
+        --border:rgba(15,23,42,.14);
+        --shadow:0 14px 40px rgba(2,6,23,.25);
+        --font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      }
+      #copilot-launcher{
+        position:fixed; right:18px; bottom:18px; z-index:9999;
+        width:56px; height:56px; border-radius:999px; border:0;
+        background:var(--brand); color:#fff; cursor:pointer;
+        box-shadow:var(--shadow); display:grid; place-items:center;
+        font:700 14px/1 var(--font);
+      }
+      #copilot-widget{
+        position:fixed; right:18px; bottom:86px; z-index:9999;
+        width:var(--w); height:var(--h);
+        border:1px solid var(--border); border-radius:var(--r);
+        box-shadow:var(--shadow); overflow:hidden; background:var(--bg);
+        display:none;
+      }
+      #copilot-header{
+        height:48px; display:flex; align-items:center; justify-content:space-between;
+        padding:0 10px 0 14px;
+        background:linear-gradient(90deg,var(--brand),var(--brand2));
+        color:#fff; font:700 14px/1 var(--font);
+      }
+      #copilot-subtitle{ font:500 12px/1 var(--font); opacity:.9; margin-top:2px; }
+      #copilot-titlewrap{ display:flex; flex-direction:column; gap:2px; }
+      #copilot-close{
+        width:34px; height:34px; border-radius:10px; border:0;
+        background:rgba(255,255,255,.18); color:#fff; cursor:pointer;
+        font-size:20px; display:grid; place-items:center;
+      }
+      #webchat{ width:100%; height:calc(var(--h) - 48px); }
+      @media (max-width:420px){
+        #copilot-widget{ left:10px; right:10px; width:auto; }
+        #copilot-launcher{ right:10px; bottom:10px; }
+      }
+    `);
+
+    const launcher = el("button", { id:"copilot-launcher", "aria-label":"Open chat", "aria-expanded":"false", text:"Chat" });
+    const closeBtn = el("button", { id:"copilot-close", "aria-label":"Close chat", title:"Close", text:"×" });
+
+    const titleWrap = el("div", { id:"copilot-titlewrap" }, [
+      el("div", { text:"Ask Copilot" }),
+      el("div", { id:"copilot-subtitle", text:"Sign in to chat" })
+    ]);
+
+    const header = el("header", { id:"copilot-header" }, [titleWrap, closeBtn]);
+    const webchatHost = el("div", { id:"webchat" });
+
+    const widget = el("section", { id:"copilot-widget", role:"dialog", "aria-label":"Copilot chat widget" }, [header, webchatHost]);
+
+    document.body.appendChild(launcher);
+    document.body.appendChild(widget);
+
+    function openWidget() {
+      widget.style.display = "block";
+      launcher.setAttribute("aria-expanded","true");
+      closeBtn.focus();
+    }
+    function closeWidget() {
+      widget.style.display = "none";
+      launcher.setAttribute("aria-expanded","false");
+      launcher.focus();
+    }
+
+    closeBtn.addEventListener("click", closeWidget);
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && widget.style.display === "block") closeWidget();
+    });
+
+    // ---------------------------
+    // 3) Load libraries & render chat (once)
+    // ---------------------------
     let rendered = false;
 
-    async function renderChatOnce() {
+    async function ensureRendered() {
       if (rendered) return;
 
-      // Load BotFramework WebChat UI library
+      // Web Chat UI
       await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
 
-      // Import Copilot Studio client + WebChat bridge
+      // MSAL for JWT token (interactive user sign-in)
+      await loadScript("https://cdn.jsdelivr.net/npm/@azure/msal-browser@latest/dist/msal-browser.min.js");
 
-      // TODO: Replace with your agent identifiers
-      const client = new CopilotStudioClient({
-        directConnectUrl: "https://defaultbbcab52e9fbe43d6a2f39f66c43df2.68.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/copilots_header_0c5b0/conversations?api-version=2022-03-01-preview"
-      });
+      // Copilot Studio client SDK (ESM import)
+      const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
+      const { CopilotStudioClient, CopilotStudioWebChat } = sdk;
 
-      // Create DirectLine-compatible connection for WebChat. [1](https://swanseauniversity.sharepoint.com/sites/DigitalArchitecture/Shared%20Documents/COAH%20Test/w_gb_b25.txt?web=1)
+      // Connection settings: use directConnectUrl (other settings ignored when provided) [3](https://github.com/Azure-Samples/azure-openai-chat-frontend)[4](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)
+      const settings = {
+        directConnectUrl: DIRECT_CONNECT_URL,
+        useExperimentalEndpoint: USE_EXPERIMENTAL_ENDPOINT
+      };
+
+      // Compute the correct scope/audience for the token using the client helper [5](https://github.com/microsoft/agents)
+      const scope = CopilotStudioClient.scopeFromSettings(settings);
+
+      // MSAL setup (browser public client)
+      const msalConfig = {
+        auth: {
+          clientId: CLIENT_ID,
+          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+          redirectUri: window.location.origin
+        }
+      };
+      const msalInstance = new window.msal.PublicClientApplication(msalConfig);
+
+      // Sign in + get token for Copilot Studio/Power Platform audience
+      let account = msalInstance.getAllAccounts()?.[0];
+      if (!account) {
+        const login = await msalInstance.loginPopup({ scopes: [scope] });
+        account = login.account;
+      }
+
+      let token;
+      try {
+        const silent = await msalInstance.acquireTokenSilent({ scopes: [scope], account });
+        token = silent.accessToken;
+      } catch {
+        const popup = await msalInstance.acquireTokenPopup({ scopes: [scope], account });
+        token = popup.accessToken;
+      }
+
+      // Initialize CopilotStudioClient with settings + JWT token (JWT required) [1](https://microsoft.github.io/Agents-for-js/modules/_microsoft_agents-copilotstudio-client.html)[2](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/?view=agents-sdk-js-latest)
+      const client = new CopilotStudioClient(settings, token);
+
+      // Create DirectLine-compatible connection for WebChat (CopilotStudioWebChat) [2](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/?view=agents-sdk-js-latest)
       const directLine = CopilotStudioWebChat.createConnection(client, { showTyping: true });
 
-      // Render Web Chat into our dynamically created host element
+      // Render Web Chat
       window.WebChat.renderWebChat(
         {
           directLine,
@@ -233,37 +213,19 @@
         webchatHost
       );
 
+      // Update subtitle once connected
+      document.getElementById("copilot-subtitle").textContent = "Connected";
+
       rendered = true;
     }
 
-    function openWidget() {
-      widget.style.display = "block";
-      launcher.setAttribute("aria-expanded", "true");
-      closeBtn.focus();
-    }
-
-    function closeWidget() {
-      widget.style.display = "none";
-      launcher.setAttribute("aria-expanded", "false");
-      launcher.focus();
-    }
-
-    // ---------- 5) Hook up events ----------
     launcher.addEventListener("click", async () => {
       const isOpen = widget.style.display === "block";
       if (isOpen) {
         closeWidget();
       } else {
         openWidget();
-        await renderChatOnce();
-      }
-    });
-
-    closeBtn.addEventListener("click", closeWidget);
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && widget.style.display === "block") {
-        closeWidget();
+        await ensureRendered();
       }
     });
   </script>
