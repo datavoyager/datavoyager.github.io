@@ -197,7 +197,7 @@
       await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
 
       // Import Copilot Studio client + WebChat bridge
-      const mod = await import("https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client/dist/index.js");
+      const mod = await import("https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client/dist/src/index.js");
       const { CopilotStudioClient, CopilotStudioWebChat } = mod;
 
       // TODO: Replace with your agent identifiers
