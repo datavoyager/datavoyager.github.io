@@ -153,6 +153,7 @@
       // MSAL for JWT token (interactive user sign-in)
       
       const msal = await import("https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm");
+
       
       const msalConfig = {
         auth: {
@@ -163,6 +164,8 @@
       };
       
       const msalInstance = new msal.PublicClientApplication(msalConfig);
+      // ✅ REQUIRED in msal-browser v3+
+      await msalInstance.initialize();
 
       // Copilot Studio client SDK (ESM import)
       const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
