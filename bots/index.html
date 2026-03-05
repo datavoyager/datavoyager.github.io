@@ -107,10 +107,10 @@
 
     // Build ConnectionSettings using directConnectUrl.
     // When directConnectUrl is provided, other settings are ignored. [1](https://learn.microsoft.com/en-us/javascript/api/@microsoft/agents-copilotstudio-client/copilotstudioconnectionsettings?view=agents-sdk-js-latest)[2](https://microsoft.github.io/Agents-for-js/interfaces/_microsoft_agents-copilotstudio-client.CopilotStudioConnectionSettings.html)
-    const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); [7](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)[1](https://learn.microsoft.com/en-us/javascript/api/@microsoft/agents-copilotstudio-client/copilotstudioconnectionsettings?view=agents-sdk-js-latest)
+    const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); 
 
     // Ask the SDK what scope/audience to request for this connection. [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
-    const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
+    const scope = Agents.CopilotStudioClient.scopeFromSettings(settings);
 
     // MSAL sign-in + token
     const msalApp = new window.msal.PublicClientApplication({
@@ -140,10 +140,9 @@
 
     // CopilotStudioClient(settings, token) [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
     // Note: SDK requires a valid JWT token. [4](https://www.npmjs.com/package/@microsoft/agents-copilotstudio-client?activeTab=readme)[5](https://microsoft.github.io/Agents-for-js/modules/_microsoft_agents-copilotstudio-client.html)
-    const client = new Agents.CopilotStudioClient(settings, jwt); [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
-
+    const client = new Agents.CopilotStudioClient(settings, jwt);
     // Create a WebChat-compatible connection [10](https://github.com/microsoft/Agents/blob/main/samples/dotnet/copilotstudio-client/SampleConnectionSettings.cs)
-    const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true }); [10](https://github.com/microsoft/Agents/blob/main/samples/dotnet/copilotstudio-client/SampleConnectionSettings.cs)
+    const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true });
 
     // Render WebChat (no iframe)
     window.WebChat.renderWebChat(
