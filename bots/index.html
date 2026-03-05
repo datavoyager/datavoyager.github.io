@@ -6,7 +6,7 @@
   <title>Copilot Studio (Option B) - MSAL ESM + WebChat (No Iframe)</title>
 </head>
 <body>
-<!-- UI will be injected by JS -->
+  <!-- UI will be injected by JS -->
 
   <script>
   (function () {
@@ -26,7 +26,7 @@
     const MSAL_ESM = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm"; // jsDelivr ESM [3](https://www.jsdelivr.com/package/npm/@azure/msal-browser)
     const AGENTS_SDK_ESM = "https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client@latest/+esm";
 
-    const LOCALE = "en-GB";
+    const LOCALE = "en-US";
     const WIDGET_TITLE = "Copilot";
     const START_OPEN = true;
 
@@ -122,3 +122,59 @@
           redirectUri: window.location.href
         },
         cache: { cacheLocation: "sessionStorage" }
+      });
+
+      let account = msalApp.getAllAccounts()[0];
+      if (!account) {
+        await msalApp.loginPopup({ scopes: [scope] });
+        account = msalApp.getAllAccounts()[0];
+      }
+
+      let tokenResult;
+      try {
+        tokenResult = await msalApp.acquireTokenSilent({ account, scopes: [scope] });
+      } catch {
+        tokenResult = await msalApp.acquireTokenPopup({ scopes: [scope] });
+      }
+
+      const jwt = tokenResult.accessToken;
+
+      // Create CopilotStudioClient + WebChat connection
+      const client = new Agents.CopilotStudioClient(settings, jwt);
+      const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true });
+
+      window.WebChat.renderWebChat(
+        {
+          directLine: directLineLike,
+          locale: LOCALE,
+          styleOptions: {
+            accent: "#2563EB",
+            bubbleBackground: "#F3F4F6",
+            bubbleFromUserBackground: "#DBEAFE",
+            hideUploadButton: true
+          }
+        },
+        document.getElementById("copilot-webchat")
+      );
+    }
+
+    onReady(() => {
+      injectStyles([
+        "#copilot-widget-host{position:fixed;right:16px;bottom:16px;z-index:99999;font-family:Segoe UI, Arial, sans-serif;}",
+        ".copilot-widget{width:360px;box-shadow:0 10px 30px rgba(0,0,0,.18);border-radius:12px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08);}",
+        ".copilot-header{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111827;color:#fff;border:0;cursor:pointer;}",
+        ".copilot-title{font-size:14px;font-weight:600;}",
+        ".copilot-chevron{transition:transform .2s ease;}",
+        ".copilot-widget.open .copilot-chevron{transform:rotate(180deg);}",
+        ".copilot-body{height:520px;display:none;}",
+        ".copilot-widget.open .copilot-body{display:block;}",
+        ".copilot-webchat{height:100%;}"
+      ].join("\n"));
+
+      injectHtmlShell();
+      startCopilot().catch(showError);
+    });
+  })();
+  </script>
+</body>
+</html>
