@@ -164,17 +164,6 @@
       
       const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-
-      // Copilot Studio client SDK (ESM import)
-      const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
-      const { CopilotStudioClient, CopilotStudioWebChat } = sdk;
-
-      // Connection settings: use directConnectUrl (other settings ignored when provided) [3](https://github.com/Azure-Samples/azure-openai-chat-frontend)[4](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)
-      const settings = {
-        directConnectUrl: DIRECT_CONNECT_URL,
-        useExperimentalEndpoint: USE_EXPERIMENTAL_ENDPOINT
-      };
-
       // Copilot Studio client SDK (ESM import)
       const sdk = await import("https://esm.run/@microsoft/agents-copilotstudio-client");
       const {
