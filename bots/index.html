@@ -3,31 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Copilot Studio (Option B) - No Iframe WebChat</title>
+  <title>Copilot Studio (Option B) - MSAL ESM + WebChat (No Iframe)</title>
 </head>
 <body>
-  <!-- No static HTML required (UI injected via JS) -->
+  <!-- UI will be injected by JS -->
 
   <script>
   (function () {
     // =========================
     // CONFIG (EDIT THESE)
     // =========================
-  const DIRECT_CONNECT_URL =
-    "https://defaultbbcab52e9fbe43d6a2f39f66c43df2.68.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/copilots_header_0c5b0/conversations?api-version=2022-03-01-preview";
+    const DIRECT_CONNECT_URL =
+      "https://xxx.xx.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/copilots_header_0c5b0/conversations?api-version=2022-03-01-preview";
 
-  const TENANT_ID = "Default-bbcab52e-9fbe-43d6-a2f3-9f66c43df268";
-  const CLIENT_ID = "628ba085-eb00-f111-8407-000d3ab73026"; // Entra App Registration (SPA)
+    const TENANT_ID = "YOUR_TENANT_ID";
+    const CLIENT_ID = "YOUR_PUBLIC_CLIENT_APP_ID"; // Entra App Registration (SPA/Public Client)
 
-    // External libraries (loaded by injection)
-    const MSAL_JS = "https://unpkg.com/@azure/msal-browser@3/dist/msal-browser.min.js";
+    // External JS (injected)
     const WEBCHAT_JS = "https://cdn.botframework.com/botframework-webchat/latest/webchat.js";
 
-    // Agents SDK (loaded as ESM via dynamic import)
+    // ESM CDN imports (fast path)
+    const MSAL_ESM = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@5.3.0/+esm"; // jsDelivr ESM [3](https://www.jsdelivr.com/package/npm/@azure/msal-browser)
     const AGENTS_SDK_ESM = "https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client@latest/+esm";
 
-    // UI Options
-    const LOCALE = "en-GB";
+    const LOCALE = "en-US";
     const WIDGET_TITLE = "Copilot";
     const START_OPEN = true;
 
@@ -35,7 +34,6 @@
     // Helpers
     // =========================
     function onReady(fn) {
-      // Ensure DOM (and document.body) exists before we append UI [1](https://www.hubsite365.com/en-ww/crm-pages/copilot-studio-connect-to-copilot-studio-agent-with-sso-using-agent-sdk-or-directline.htm)[2](https://citizendeveloper365.com/understanding-authentication-settings-in-microsoft-copilot-studio/)
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", fn);
       } else {
@@ -77,8 +75,6 @@
     function injectHtmlShell() {
       const host = document.createElement("div");
       host.id = "copilot-widget-host";
-
-      // All UI HTML injected via JS (your requirement)
       host.innerHTML = [
         '<div class="copilot-widget ' + (START_OPEN ? "open" : "") + '">',
         '  <button type="button" class="copilot-header" aria-expanded="' + (START_OPEN ? "true" : "false") + '">',
@@ -91,7 +87,6 @@
         "</div>"
       ].join("\n");
 
-      // Body exists because we call this inside onReady()
       document.body.appendChild(host);
 
       const header = host.querySelector(".copilot-header");
@@ -103,90 +98,27 @@
     }
 
     async function startCopilot() {
-      // Load external JS via injection
-      
-        // Instead of window.msal:
-        const msal = await import("./msal-browser.min.js"); // or CDN +esm if allowed
-        
-        const msalApp = new msal.PublicClientApplication({
-          auth: {
-            clientId: CLIENT_ID,
-            authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-            redirectUri: window.location.href
-          },
-          cache: { cacheLocation: "sessionStorage" }
-        });
-
+      // Load WebChat via injected script tag
       await loadScript(WEBCHAT_JS);
-
-      if (!window.msal) throw new Error("MSAL failed to load.");
       if (!window.WebChat) throw new Error("Bot Framework Web Chat failed to load.");
 
-      // Load Agents SDK via dynamic import
+      // Import MSAL as ESM from jsDelivr (+esm) [3](https://www.jsdelivr.com/package/npm/@azure/msal-browser)
+      const msal = await import(MSAL_ESM);
+
+      // Import Agents SDK as ESM
       const Agents = await import(AGENTS_SDK_ESM);
 
-      // Build ConnectionSettings using directConnectUrl
-      // directConnectUrl causes other settings to be ignored. [3](https://learn.microsoft.com/en-us/microsoft-copilot-studio/publication-integrate-web-or-native-app-m365-agents-sdk)[4](https://community.powerplatform.com/forums/thread/details/?threadid=4d0f9b82-80cf-ef11-b8e8-6045bdd9204f)
-      const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); 
-      // Compute the required scope/audience from settings [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
-      const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); 
+      // Use directConnectUrl; when set, other settings are ignored (per SDK docs)
+      const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL });
 
-      let account = msalApp.getAllAccounts()[0];
-      if (!account) {
-        await msalApp.loginPopup({ scopes: [scope] });
-        account = msalApp.getAllAccounts()[0];
-      }
+      // Ask SDK for required scope/audience
+      const scope = Agents.CopilotStudioClient.scopeFromSettings(settings);
 
-      let tokenResult;
-      try {
-        tokenResult = await msalApp.acquireTokenSilent({ account, scopes: [scope] });
-      } catch (e) {
-        tokenResult = await msalApp.acquireTokenPopup({ scopes: [scope] });
-      }
-
-      const jwt = tokenResult.accessToken;
-
-      // Create CopilotStudioClient(settings, token) [5](https://github.com/microsoft/Agents/issues/421)[6](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioWebChat.html)
-      const client = new Agents.CopilotStudioClient(settings, jwt); 
-
-      // Create WebChat-compatible connection [7](https://rajeevpentyala.com/2025/11/10/copilot-studio-configure-end-user-authentication/)
-      const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true }); 
-      // Render WebChat into injected container (no iframe)
-      window.WebChat.renderWebChat(
-        {
-          directLine: directLineLike,
-          locale: LOCALE,
-          styleOptions: {
-            accent: "#2563EB",
-            bubbleBackground: "#F3F4F6",
-            bubbleFromUserBackground: "#DBEAFE",
-            hideUploadButton: true
-          }
+      // MSAL auth
+      const msalApp = new msal.PublicClientApplication({
+        auth: {
+          clientId: CLIENT_ID,
+          authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+          redirectUri: window.location.href
         },
-        document.getElementById("copilot-webchat")
-      );
-    }
-
-    // =========================
-    // Boot
-    // =========================
-    onReady(() => {
-      injectStyles([
-        "#copilot-widget-host{position:fixed;right:16px;bottom:16px;z-index:99999;font-family:Segoe UI, Arial, sans-serif;}",
-        ".copilot-widget{width:360px;box-shadow:0 10px 30px rgba(0,0,0,.18);border-radius:12px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08);}",
-        ".copilot-header{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111827;color:#fff;border:0;cursor:pointer;}",
-        ".copilot-title{font-size:14px;font-weight:600;}",
-        ".copilot-chevron{transition:transform .2s ease;}",
-        ".copilot-widget.open .copilot-chevron{transform:rotate(180deg);}",
-        ".copilot-body{height:520px;display:none;}",
-        ".copilot-widget.open .copilot-body{display:block;}",
-        ".copilot-webchat{height:100%;}"
-      ].join("\n"));
-
-      injectHtmlShell();
-      startCopilot().catch(showError);
-    });
-  })();
-  </script>
-</body>
-</html>
+        cache: { cacheLocation: "sessionStorage" }
