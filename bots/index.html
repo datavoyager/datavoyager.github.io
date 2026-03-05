@@ -1,66 +1,166 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Copilot Studio – No iframe, Connection String</title>
+<script>
+(async function () {
+  // =========================
+  // CONFIG (fill these)
+  // =========================
+  const DIRECT_CONNECT_URL =
+    "https://defaultbbcab52e9fbe43d6a2f39f66c43df2.68.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/copilots_header_0c5b0/conversations?api-version=2022-03-01-preview";
 
-  <!-- Web Chat UI -->
-  <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+  const TENANT_ID = "Default-bbcab52e-9fbe-43d6-a2f3-9f66c43df268";
+  const CLIENT_ID = "628ba085-eb00-f111-8407-000d3ab73026"; // Entra App Registration (SPA)
 
-  <!-- Agents SDK -->
-  <script type="importmap">
-    {
-      "imports": {
-        "@microsoft/agents-copilotstudio-client":
-          "https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client/+esm"
-      }
+  // External libraries (loaded by injection as requested)
+  const MSAL_JS = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/dist/msal-browser.min.js";
+  const WEBCHAT_JS = "https://cdn.botframework.com/botframework-webchat/latest/webchat.js";
+
+  // Agents SDK ESM (loaded via dynamic import)
+  const AGENTS_SDK_ESM = "https://cdn.jsdelivr.net/npm/@microsoft/agents-copilotstudio-client@latest/+esm";
+
+  const LOCALE = "en-US";
+  const WIDGET_TITLE = "Copilot";
+  const START_OPEN = true;
+
+  // =========================
+  // Helpers: inject CSS/HTML/JS
+  // =========================
+  function injectStyles(cssText) {
+    const style = document.createElement("style");
+    style.appendChild(document.createTextNode(cssText));
+    document.head.appendChild(style);
+  }
+
+  function injectHtmlShell() {
+    const host = document.createElement("div");
+    host.id = "copilot-widget-host";
+    host.innerHTML = [
+      '<div class="copilot-widget ' + (START_OPEN ? "open" : "") + '">',
+      '  <button type="button" class="copilot-header" aria-expanded="' + (START_OPEN ? "true" : "false") + '">',
+      '    <span class="copilot-title">' + WIDGET_TITLE + '</span>',
+      '    <span class="copilot-chevron" aria-hidden="true">▾</span>',
+      "  </button>",
+      '  <div class="copilot-body" role="region" aria-label="Copilot chat">',
+      '    <div id="copilot-webchat" class="copilot-webchat"></div>',
+      "  </div>",
+      "</div>"
+    ].join("\n");
+    document.body.appendChild(host);
+
+    const header = host.querySelector(".copilot-header");
+    const widget = host.querySelector(".copilot-widget");
+    header.addEventListener("click", () => {
+      const isOpen = widget.classList.toggle("open");
+      header.setAttribute("aria-expanded", String(isOpen));
+    });
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  function showError(err) {
+    const el = document.getElementById("copilot-webchat");
+    if (el) {
+      el.innerHTML =
+        '<div style="padding:12px;color:#b91c1c;font-size:13px;">' +
+        "Copilot chat failed to start.<br/>" +
+        "<pre style='white-space:pre-wrap;word-break:break-word;margin-top:8px;'>" +
+        (err && err.message ? err.message : String(err)) +
+        "</pre></div>";
     }
-  </script>
-</head>
+    console.error(err);
+  }
 
-<body>
-  <div id="webchat" style="width:360px;height:540px;"></div>
+  // =========================
+  // Boot UI (CSS + HTML injected)
+  // =========================
+  injectStyles([
+    "#copilot-widget-host{position:fixed;right:16px;bottom:16px;z-index:99999;font-family:Segoe UI, Arial, sans-serif;}",
+    ".copilot-widget{width:360px;box-shadow:0 10px 30px rgba(0,0,0,.18);border-radius:12px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08);}",
+    ".copilot-header{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111827;color:#fff;border:0;cursor:pointer;}",
+    ".copilot-title{font-size:14px;font-weight:600;}",
+    ".copilot-chevron{transition:transform .2s ease;}",
+    ".copilot-widget.open .copilot-chevron{transform:rotate(180deg);}",
+    ".copilot-body{height:520px;display:none;}",
+    ".copilot-widget.open .copilot-body{display:block;}",
+    ".copilot-webchat{height:100%;}"
+  ].join("\n"));
 
-  <script type="module">
-    import {
-      CopilotStudioClient,
-      CopilotStudioWebChat
-    } from "@microsoft/agents-copilotstudio-client";
+  injectHtmlShell();
 
-    /*********************************************************
-     * 1) Paste the connection string from Native app channel
-     *********************************************************/
-    const CONNECTION_STRING =
-      "https://defaultbbcab52e9fbe43d6a2f39f66c43df2.68.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/copilots_header_0c5b0/conversations?api-version=2022-03-01-preview";
+  try {
+    // Load external JS via injection (requirement)
+    await loadScript(MSAL_JS);
+    await loadScript(WEBCHAT_JS);
 
-    /*********************************************************
-     * 2) Create the Copilot Studio client
-     *********************************************************/
-    const client = new CopilotStudioClient(
-      { directConnectUrl: CONNECTION_STRING }
-    );
+    if (!window.msal) throw new Error("MSAL failed to load.");
+    if (!window.WebChat) throw new Error("Bot Framework Web Chat failed to load.");
 
-    /*********************************************************
-     * 3) Create a WebChat-compatible connection (NO iframe)
-     *********************************************************/
-    const directLine = CopilotStudioWebChat.createConnection(client, {
-      showTyping: true
+    // Load Agents SDK
+    const Agents = await import(AGENTS_SDK_ESM);
+
+    // Build ConnectionSettings using directConnectUrl.
+    // When directConnectUrl is provided, other settings are ignored. [1](https://learn.microsoft.com/en-us/javascript/api/@microsoft/agents-copilotstudio-client/copilotstudioconnectionsettings?view=agents-sdk-js-latest)[2](https://microsoft.github.io/Agents-for-js/interfaces/_microsoft_agents-copilotstudio-client.CopilotStudioConnectionSettings.html)
+    const settings = new Agents.ConnectionSettings({ directConnectUrl: DIRECT_CONNECT_URL }); [7](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/connectionsettings?view=agents-sdk-js-latest)[1](https://learn.microsoft.com/en-us/javascript/api/@microsoft/agents-copilotstudio-client/copilotstudioconnectionsettings?view=agents-sdk-js-latest)
+
+    // Ask the SDK what scope/audience to request for this connection. [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
+    const scope = Agents.CopilotStudioClient.scopeFromSettings(settings); [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
+
+    // MSAL sign-in + token
+    const msalApp = new window.msal.PublicClientApplication({
+      auth: {
+        clientId: CLIENT_ID,
+        authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+        redirectUri: window.location.href
+      },
+      cache: { cacheLocation: "sessionStorage" }
     });
 
-    /*********************************************************
-     * 4) Render Web Chat into a DIV
-     *********************************************************/
+    // Acquire token (silent -> popup fallback)
+    let account = msalApp.getAllAccounts()[0];
+    if (!account) {
+      await msalApp.loginPopup({ scopes: [scope] });
+      account = msalApp.getAllAccounts()[0];
+    }
+
+    let tokenResult;
+    try {
+      tokenResult = await msalApp.acquireTokenSilent({ account, scopes: [scope] });
+    } catch {
+      tokenResult = await msalApp.acquireTokenPopup({ scopes: [scope] });
+    }
+
+    const jwt = tokenResult.accessToken;
+
+    // CopilotStudioClient(settings, token) [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
+    // Note: SDK requires a valid JWT token. [4](https://www.npmjs.com/package/@microsoft/agents-copilotstudio-client?activeTab=readme)[5](https://microsoft.github.io/Agents-for-js/modules/_microsoft_agents-copilotstudio-client.html)
+    const client = new Agents.CopilotStudioClient(settings, jwt); [8](https://learn.microsoft.com/en-us/javascript/api/%40microsoft/agents-copilotstudio-client/copilotstudioclient?view=agents-sdk-js-latest)[9](https://microsoft.github.io/Agents-for-js/classes/_microsoft_agents-copilotstudio-client.CopilotStudioClient.html)
+
+    // Create a WebChat-compatible connection [10](https://github.com/microsoft/Agents/blob/main/samples/dotnet/copilotstudio-client/SampleConnectionSettings.cs)
+    const directLineLike = Agents.CopilotStudioWebChat.createConnection(client, { showTyping: true }); [10](https://github.com/microsoft/Agents/blob/main/samples/dotnet/copilotstudio-client/SampleConnectionSettings.cs)
+
+    // Render WebChat (no iframe)
     window.WebChat.renderWebChat(
       {
-        directLine,
+        directLine: directLineLike,
+        locale: LOCALE,
         styleOptions: {
-          accent: "#4f46e5",
-          bubbleBorderRadius: 12,
-          bubbleFromUserBorderRadius: 12
+          accent: "#2563EB",
+          bubbleBackground: "#F3F4F6",
+          bubbleFromUserBackground: "#DBEAFE",
+          hideUploadButton: true
         }
       },
-      document.getElementById("webchat")
+      document.getElementById("copilot-webchat")
     );
-  </script>
-</body>
-</html>
+  } catch (e) {
+    showError(e);
+  }
+})();
+</script>
