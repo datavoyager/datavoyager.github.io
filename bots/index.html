@@ -155,7 +155,8 @@
         const token = CONFIG.token;
 
         // Create Direct Line connection
-        const directLine = window.WebChat.createDirectLine({ 
+        const directLine = window.WebChat.createDirectLine({
+          domain: "https://directline.botframework.com/v3/directline/",
           token: token
         });
 
