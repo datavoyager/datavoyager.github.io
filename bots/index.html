@@ -152,7 +152,7 @@
         await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
 
         // Get Direct Line token
-        const token = Config.token;
+        const token = CONFIG.token;
 
         // Create Direct Line connection
         const directLine = window.WebChat.createDirectLine({ token });
