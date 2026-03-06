@@ -144,3 +144,60 @@
             font-size: 18px;
             cursor: pointer;
             width: 36px;
+            height: 36px;
+            border-radius: 10px;
+          }
+
+          .cp-close:hover {
+            background: rgba(255,255,255,.15);
+          }
+
+          .cp-webchat {
+            flex: 1;
+          }
+        `);
+
+        const host = injectShell();
+        const fab = host.querySelector(".cp-fab");
+        const panel = host.querySelector(".cp-panel");
+        const close = host.querySelector(".cp-close");
+        const mount = host.querySelector(".cp-webchat");
+
+        fab.onclick = () => panel.hidden = !panel.hidden;
+        close.onclick = () => panel.hidden = true;
+
+        // Load Bot Framework Web Chat (no iframe)
+        await loadScript("https://cdn.botframework.com/botframework-webchat/latest/webchat.js");
+
+        // Get Direct Line token
+        const token = await getToken();
+
+        // Create Direct Line connection
+        const directLine = window.WebChat.createDirectLine({ token });
+
+        // Render chat
+        window.WebChat.renderWebChat(
+          {
+            directLine,
+            styleOptions: {
+              accent: "#2563eb",
+              botAvatarInitials: "CP",
+              userAvatarInitials: "You"
+            }
+          },
+          mount
+        );
+
+        // Open by default (optional)
+        panel.hidden = false;
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>
